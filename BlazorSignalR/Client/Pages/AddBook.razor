@@ -1,0 +1,77 @@
+﻿@page "/addbook"
+
+@using Microsoft.AspNetCore.SignalR.Client
+@using BlazorSignalR.Shared
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<h2>Create Book</h2>
+<hr />
+<form>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="form-group">
+                <label for="Name" class="control-label">Name</label>
+                <input for="Name" class="form-control" @bind="@book.Name" />
+            </div>
+            <div class="form-group">
+                <label for="Department" class="control-label">ISBN</label>
+                <input for="Department" class="form-control" @bind="@book.Isbn" />
+            </div>
+            <div class="form-group">
+                <label for="Designation" class="control-label">Author</label>
+                <input for="Designation" class="form-control" @bind="@book.Author" />
+            </div>
+            <div class="form-group">
+                <label for="Company" class="control-label">Price</label>
+                <input for="Company" class="form-control" @bind="@book.Price" />
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <input type="button" class="btn btn-primary" @onclick="@CreateBook" value="Save" />
+                <input type="button" class="btn" @onclick="@Cancel" value="Cancel" />
+            </div>
+        </div>
+    </div>
+</form>
+
+@code {
+
+    private HubConnection hubConnection;
+    Book book = new Book();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/broadcastHub"))
+            .Build();
+
+        await hubConnection.StartAsync();
+    }
+
+    protected async Task CreateBook()
+    {
+        await Http.PostAsJsonAsync("api/books", book);
+        if (IsConnected) await SendMessage();
+        NavigationManager.NavigateTo("listbooks");
+    }
+
+    Task SendMessage() => hubConnection.SendAsync("SendMessage");
+
+    public bool IsConnected =>
+        hubConnection.State == HubConnectionState.Connected;
+
+    public void Dispose()
+    {
+        _ = hubConnection.DisposeAsync();
+    }
+
+    void Cancel()
+    {
+        NavigationManager.NavigateTo("listbooks");
+    }
+}       

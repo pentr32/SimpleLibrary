@@ -6,6 +6,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
+using BlazorSignalR.Server.Hubs;
+using Microsoft.EntityFrameworkCore;
+using BlazorSignalR.Server.Data;
 
 namespace BlazorSignalR.Server
 {
@@ -25,6 +28,15 @@ namespace BlazorSignalR.Server
 
             services.AddControllersWithViews();
             services.AddRazorPages();
+            services.AddSignalR();
+            services.AddResponseCompression(opts =>
+            {
+                opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+                    new[] { "application/octet-stream" });
+            });
+
+            services.AddDbContext<BooksDbContext>(options =>
+                    options.UseSqlServer(Configuration.GetConnectionString("BooksDbContext")));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -52,6 +64,7 @@ namespace BlazorSignalR.Server
             {
                 endpoints.MapRazorPages();
                 endpoints.MapControllers();
+                endpoints.MapHub<BroadcastHub>("/broadcastHub");
                 endpoints.MapFallbackToFile("index.html");
             });
         }

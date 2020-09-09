@@ -1,0 +1,77 @@
+﻿@page "/deletebook/{id}"
+
+@using Microsoft.AspNetCore.SignalR.Client
+@using BlazorSignalR.Shared
+
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<h2>Delete</h2>
+<p>Are you sure you want to delete this Book with Id :<b> @id</b></p>
+<br />
+<div class="col-md-4">
+    <table class="table">
+        <tr>
+            <td>Name</td>
+            <td>@book.Name</td>
+        </tr>
+        <tr>
+            <td>ISBN</td>
+            <td>@book.Isbn</td>
+        </tr>
+        <tr>
+            <td>Author</td>
+            <td>@book.Author</td>
+        </tr>
+        <tr>
+            <td>Price</td>
+            <td>@book.Price</td>
+        </tr>
+    </table>
+    <div class="form-group">
+        <input type="button" value="Delete" @onclick="@Delete" class="btn btn-primary" />
+        <input type="button" value="Cancel" @onclick="@Cancel" class="btn" />
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public string id { get; set; }
+
+    Book book = new Book();
+    private HubConnection hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        book = await Http.GetFromJsonAsync<Book>("api/books/" + id);
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/broadcastHub"))
+            .Build();
+
+        await hubConnection.StartAsync();
+    }
+
+    Task SendMessage() => hubConnection.SendAsync("SendMessage");
+
+    public bool IsConnected =>
+        hubConnection.State == HubConnectionState.Connected;
+
+    public void Dispose()
+    {
+        _ = hubConnection.DisposeAsync();
+    }
+
+    protected async Task Delete()
+    {
+        await Http.DeleteAsync("api/books/" + id);
+        if (IsConnected) await SendMessage();
+        NavigationManager.NavigateTo("listbooks");
+    }
+
+    void Cancel()
+    {
+        NavigationManager.NavigateTo("listbooks");
+    }
+}

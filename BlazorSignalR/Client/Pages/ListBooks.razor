@@ -1,0 +1,90 @@
+﻿@page "/listbooks"
+
+@using BlazorSignalR.Shared
+@using Microsoft.AspNetCore.SignalR.Client
+
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+
+<h2>Book Details</h2>
+<p>
+    <a href="/addbook">Create New Book</a>
+</p>
+@if (books == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class='table'>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>ISBN</th>
+                <th>Author</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in books)
+            {
+                <tr>
+                    <td>@book.Name</td>
+                    <td>@book.Isbn</td>
+                    <td>@book.Author</td>
+                    <td>@book.Price</td>
+                    <td>
+                        <a href='/editbook/@book.Id'>Edit</a>
+                        <a href='/deletebook/@book.Id'>Delete</a>
+                    </td>
+                </tr>
+
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    Book[] books;
+    private HubConnection hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/broadcastHub"))
+            .Build();
+
+        hubConnection.On("ReceiveMessage", () =>
+        {
+            CallLoadData();
+            StateHasChanged();
+        });
+
+        await hubConnection.StartAsync();
+
+        await LoadData();
+    }
+
+    private void CallLoadData()
+    {
+        Task.Run(async () =>
+        {
+            await LoadData();
+        });
+    }
+
+    protected async Task LoadData()
+    {
+        books = await Http.GetFromJsonAsync<Book[]>("api/books");
+        StateHasChanged();
+    }
+
+    public bool IsConnected =>
+        hubConnection.State == HubConnectionState.Connected;
+
+    public void Dispose()
+    {
+        _ = hubConnection.DisposeAsync();
+    }
+}
